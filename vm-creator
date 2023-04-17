@@ -78,6 +78,7 @@ virt-install --name=$vmname \
 	--noautoconsole --import \
 
 # Wait
+echo "Waiting for network..."
 sleep 60
 
 # Get IP
