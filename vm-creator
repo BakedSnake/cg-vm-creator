@@ -1,0 +1,86 @@
+#!/bin/bash
+
+echo "
+####################
+      Choose OS
+####################
+1. Ubuntu
+2. Debian
+3. OpenSuse
+"
+read os
+case $os in
+  1) imagelink=https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img ;;
+  2) imagelink=https://cloud.debian.org/images/cloud/bullseye/20230124-1270/debian-11-generic-amd64-20230124-1270.qcow2 ;;
+  3) imagelink=https://download.opensuse.org/distribution/leap/15.4/appliances/openSUSE-Leap-15.4-Minimal-VM.x86_64-OpenStack-Cloud.qcow2 ;;
+esac
+
+#CentOS
+#imagelink=https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-20210830.0.x86_64.qcow2
+
+# Name VM
+echo "VM name:"
+read vmname
+
+# Create build environment
+echo "Install path:"
+read place
+mkdir -p $place/$vmname && cd $place/$vmname
+
+# Get Image
+wget $imagelink -O cloudImage.qcow2 # make sure it is not compressed
+
+# Create disk
+echo "Disk name:"
+read diskname
+echo "Disk size: ( example: 15G )"
+read disksize
+# Get image file
+image=cloudImage.qcow2
+qemu-img create -b $image -f qcow2 -F qcow2 "$diskname" $disksize 
+
+# Cloud-init config
+touch meta-data user-data
+echo "Username:"
+read username
+echo "Paste ssh key:"
+read userkey
+echo "Hostname:"
+read hst
+echo "instance-id: $hst 
+local-hostname: $hst 
+" > meta-data
+echo "#cloud-config
+
+users:
+  - name: $username 
+    lock_passwd: False
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    groups: sudo
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - $userkey 
+" > user-data
+mkisofs -output cidata.iso -V cidata -r -J user-data meta-data
+
+# Create VM
+osinfo-query os | less
+echo "OS name:"
+read os
+virt-install --name=$vmname \
+	--ram=2048 \
+	--vcpus=4 \
+	--disk path=$diskname,format=qcow2 \
+	--disk path=cidata.iso,device=cdrom \
+	--os-variant=$os \
+	--network network=default,model=virtio \
+	--graphics spice \
+	--noautoconsole --import \
+
+# Wait
+sleep 60
+
+# Get IP
+ip=$( virsh net-dhcp-leases default | grep $hst | cut -d ' ' -f 16 | cut -d / -f 1 )
+
+echo "You an now ssh into $hst at $ip"
