@@ -1,5 +1,9 @@
 #!/bin/bash
 
+host_user=$( who | awk '{ print $1 }' )
+
+source /home/$host_user/.config/vm-creator/vm-creator.conf
+
 echo "
 ####################
       Choose OS
@@ -23,9 +27,7 @@ echo "VM name:"
 read vmname
 
 # Create build environment
-echo "Install path:"
-read place
-mkdir -p $place/$vmname && cd $place/$vmname
+mkdir -p $vms_dir/$vmname && cd $vms_dir/$vmname
 
 # Get Image
 wget $imagelink -O cloudImage.qcow2 # make sure it is not compressed
@@ -41,11 +43,8 @@ qemu-img create -b $image -f qcow2 -F qcow2 "$diskname" $disksize
 
 # Cloud-init config
 touch meta-data user-data
-echo "Username:"
-read username
-echo "Paste ssh key:"
-read userkey
-echo "Hostname:"
+ukey=$( cat $ssh_key )
+echo "VM Hostname:"
 read hst
 echo "instance-id: $hst 
 local-hostname: $hst 
@@ -53,13 +52,13 @@ local-hostname: $hst
 echo "#cloud-config
 
 users:
-  - name: $username 
+  - name: $vm_user 
     lock_passwd: False
     sudo: ['ALL=(ALL) NOPASSWD:ALL']
     groups: sudo
     shell: /bin/bash
     ssh_authorized_keys:
-      - $userkey 
+      - $ukey 
 " > user-data
 mkisofs -output cidata.iso -V cidata -r -J user-data meta-data
 
@@ -68,13 +67,13 @@ osinfo-query os | less
 echo "OS name:"
 read os
 virt-install --name=$vmname \
-	--ram=2048 \
-	--vcpus=4 \
+	--ram=$vm_ram \
+	--vcpus=$vm_cpu \
 	--disk path=$diskname,format=qcow2 \
 	--disk path=cidata.iso,device=cdrom \
 	--os-variant=$os \
-	--network network=default,model=virtio \
-	--graphics spice \
+	--network network=$vm_net,model=$vm_net_model \
+	--graphics $vm_graphics \
 	--noautoconsole --import \
 
 # Wait
@@ -84,4 +83,4 @@ sleep 60
 # Get IP
 ip=$( virsh net-dhcp-leases default | grep $hst | cut -d ' ' -f 16 | cut -d / -f 1 )
 
-echo "You an now ssh into $hst at $ip"
+echo "You can now ssh into $hst at $ip"
