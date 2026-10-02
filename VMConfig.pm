@@ -4,21 +4,8 @@ package VMConfig;
 use strict;
 use warnings;
 
-## Get user
 our $username = $ENV{LOGNAME};
 our $config_file = "$ENV{HOME}/.config/cgvirt/cgvirt.conf";
-
-## Detect Host OS
-our $os_release;
-my $os_release_file = "/etc/os-release";
-open OS_RELEASE, "< $os_release_file" or die "Could not open file: $!";
-while (my $line = <OS_RELEASE>) {
-    if ( $line =~ m/^ID/ ) {
-        my @parts = split("=", $line);
-        $os_release = substr($parts[1], 1, -2);
-    }
-}
-close OS_RELEASE;
 
 our %virtual_machine = (
     vm_dir => "",
@@ -27,11 +14,26 @@ our %virtual_machine = (
     ram => "2096",
     cpu => "2",
     net => "default",
-    net_model => "virtio",
+    model => "virtio",
     graphics => "spice"
 );
 
-sub parse_config() {
+sub get_os_release {
+    my $os_release;
+    my $os_release_file = "/etc/os-release";
+    open OS_RELEASE, "< $os_release_file" or die "Could not open file: $!";
+    while (my $line = <OS_RELEASE>) {
+        if ( $line =~ m/^ID/ ) {
+            my @parts = split("=", $line);
+            $os_release = substr($parts[1], 1, -2);
+        }
+    }
+    close OS_RELEASE;
+
+    return $os_release;
+}
+
+sub parse_config {
     open CONFIG, "< $config_file" or die "Could not open file: $!";
     while (my $line = <CONFIG>) {
         foreach my $key (keys %virtual_machine) {
@@ -52,7 +54,7 @@ sub parse_config() {
     close CONFIG;
 }
 
-sub get_sudo() {
+sub get_sudo {
     my $dosu;
     my @sudo_paths = qw( /usr/bin/doas /usr/local/bin/doas /usr/bin/sudo );
     
