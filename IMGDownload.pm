@@ -13,10 +13,10 @@ sub select_image {
         #1 => "https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img",
         1 => "https://cloud-images.ubuntu.com/noble/20260926/noble-server-cloudimg-amd64.img",
         2 => "https://chuangtzu.ftp.acc.umu.se/images/cloud/trixie/20260914-2601/debian-13-generic-amd64-20260914-2601.qcow2",
-        3 => "https://download.opensuse.org/tumbleweed/appliances/openSUSE-Tumbleweed-Minimal-VM.x86_64-Cloud.qcow2"
+        3 => "https://download.opensuse.org/distribution/openSUSE-stable/appliances/Leap-16.0-Minimal-VM.x86_64-Cloud.qcow2"
     );
 
-    print(STDOUT "\nChoose OS:\n");
+    print(STDOUT "\n>>> Choose OS:\n");
     printf(STDOUT " 1. Ubuntu\n 2. Debian\n 3. OpenSuse\n\nYour answer: ");
     if ($os_choice eq "") {
         $os_choice = 2;
@@ -41,6 +41,7 @@ sub get_disk_image {
     my $curl = WWW::Curl::Easy->new;
     $curl->setopt(CURLOPT_HEADER, 0);
     $curl->setopt(CURLOPT_URL, $os_image_url);
+    $curl->setopt(CURLOPT_FOLLOWLOCATION, 1);
     $curl->setopt(CURLOPT_NOPROGRESS, 0);
     $curl->setopt(CURLOPT_PROGRESSDATA, $memory);
 
@@ -51,8 +52,8 @@ sub get_disk_image {
     my $rc;
     if ($ret == 0) {
         $rc = $curl->getinfo(CURLINFO_HTTP_CODE);
-        print(STDOUT "Transfer Ok!\n");
-        print(STDOUT "Received response: $rc\n\n");
+        print(STDOUT ">>> Transfer Ok!\n");
+        print(STDOUT ">>> Received response: $rc\n\n");
     
         open IMG, "> os_img.qcow2" or die "Could not open file: $!";
         print(IMG "$res");
