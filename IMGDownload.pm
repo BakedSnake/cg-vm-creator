@@ -1,10 +1,39 @@
 #!/usr/bin/perl
 
 package IMGDownload;
+
 use strict;
 use warnings;
-
 use WWW::Curl::Easy;
+
+sub select_image {
+    my $os_choice = $_[0];
+    my @os_images = qw( Ubuntu Debian OpenSuse );
+    my %os_img_urls = (
+        #1 => "https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img",
+        1 => "https://cloud-images.ubuntu.com/noble/20260926/noble-server-cloudimg-amd64.img",
+        2 => "https://chuangtzu.ftp.acc.umu.se/images/cloud/trixie/20260914-2601/debian-13-generic-amd64-20260914-2601.qcow2",
+        3 => "https://download.opensuse.org/tumbleweed/appliances/openSUSE-Tumbleweed-Minimal-VM.x86_64-Cloud.qcow2"
+    );
+
+    print(STDOUT "\nChoose OS:\n");
+    printf(STDOUT " 1. Ubuntu\n 2. Debian\n 3. OpenSuse\n\nYour answer: ");
+    if ($os_choice eq "") {
+        $os_choice = 2;
+        $os_choice = <STDIN>;
+        chomp $os_choice;
+    } else { print(STDOUT "$os_choice\n"); }
+
+    if ($os_choice == "1") {
+        print(STDOUT "\nDownloading:\n Ubuntu\n  - $os_img_urls{1}\n\n");
+    } elsif ($os_choice == "2") {
+        print(STDOUT "\nDownloading:\n Debian\n  - $os_img_urls{2}\n\n");
+    } else {
+        print(STDOUT "\nDownloading:\n OpenSuse\n  - $os_img_urls{3}\n\n");
+    }
+
+    return ($os_choice, %os_img_urls);
+}
 
 sub get_disk_image {
     my $os_image_url = $_[0];
@@ -29,7 +58,7 @@ sub get_disk_image {
         print(IMG "$res");
         close IMG;
     } else {
-        print("An error happened: $ret ".$curl->strerror($ret)." ".$curl->errbuf."\n");
+        print(STDERR "An error happened: $ret ".$curl->strerror($ret)." ".$curl->errbuf."\n");
     }
 }
 
