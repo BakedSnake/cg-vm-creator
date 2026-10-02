@@ -12,23 +12,26 @@ use VMConfig;
 use CloudInit;
 use IMGDownload;
 
-my $os_release = VMConfig::get_os_release();
-my $username = $VMConfig::username;
+my $os_release  = VMConfig::get_os_release();
+my $username    = $VMConfig::username;
 my $config_file = $VMConfig::config_file;
 
 my $uid;
 my $gid;
 my $vm_env;
 my $vm_name;
-my $vm_image_choice;
+my $vm_image_choice = 1;
 my %vm_image_urls;
 my $hostname;
 my $diskname;
-my $disksize;
+my $disksize = 40;
 my $ssh_key;
 
 my $dosu;
+my $interactive;
+
 my $create;
+my $delete;
 
 sub prepare {
     print(STDOUT ">>> Configuration\n");
@@ -43,15 +46,20 @@ sub prepare {
 }
 
 sub configure {
-    if ($vm_name eq "") {
+    if ($interactive or $vm_name eq "") {
         print(STDOUT "\nVM Name: ");
         $vm_name = <STDIN>;
         chomp $vm_name;
-    } else { print(STDOUT "name => $vm_name\n"); }
-    $hostname = $vm_name;
+        print(STDOUT "\nVM Hostname: ");
+        $hostname = <STDIN>;
+        chomp $hostname;
+    } else {
+        print(STDOUT "name => $vm_name\n");
+        $hostname = $vm_name;
+    }
     
     ## Select Cloud image OS
-    ($vm_image_choice, %vm_image_urls) = IMGDownload::select_image($vm_image_choice);
+    ($vm_image_choice, %vm_image_urls) = IMGDownload::select_image($vm_image_choice,$interactive);
     
     ## Create VM env
     $vm_env = "$VMConfig::virtual_machine{vm_dir}/$vm_name";
@@ -68,7 +76,7 @@ sub configure {
 sub create_vm_disk {
     $diskname = "$vm_name.qcow2";
     print(STDOUT ">>> Enter Disk Size ( in GBs ): ");
-    if ($disksize eq "") {
+    if ($interactive or $disksize eq "") {
         $disksize = <STDIN>;
         chomp $disksize;
     } else { print(STDOUT "$disksize"."G\n"); }
@@ -161,7 +169,9 @@ GetOptions(
     "sshkey=s" => \$ssh_key,
     "os=s" => \$vm_image_choice,
     "size=s" => \$disksize,
+    "interactive=s" => \$interactive,
     "create" => \$create,
+    "delete" => \$delete,
 );
 
 if ($create) {

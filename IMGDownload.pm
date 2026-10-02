@@ -8,6 +8,7 @@ use WWW::Curl::Easy;
 
 sub select_image {
     my $os_choice = $_[0];
+    my $interactive = $_[1];
     my @os_images = qw( Ubuntu Debian OpenSuse );
     my %os_img_urls = (
         #1 => "https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img",
@@ -18,7 +19,7 @@ sub select_image {
 
     print(STDOUT "\n>>> Choose OS:\n");
     printf(STDOUT " 1. Ubuntu\n 2. Debian\n 3. OpenSuse\n\nYour answer: ");
-    if ($os_choice eq "") {
+    if ($interactive or $os_choice eq "") {
         $os_choice = 2;
         $os_choice = <STDIN>;
         chomp $os_choice;
