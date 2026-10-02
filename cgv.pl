@@ -1,0 +1,169 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use File::Path qw( make_path );
+use Getopt::Long;
+use POSIX qw(setuid waitpid);
+
+use lib ".";
+use VMConfig;
+use CloudInit;
+use IMGDownload;
+
+my $os_release = VMConfig::get_os_release();
+my $username = $VMConfig::username;
+my $config_file = $VMConfig::config_file;
+
+my $uid;
+my $gid;
+my $vm_env;
+my $vm_name;
+my $vm_image_choice;
+my %vm_image_urls;
+my $hostname;
+my $diskname;
+my $disksize;
+my $ssh_key;
+
+my $dosu;
+my $create;
+
+sub prepare {
+    print(STDOUT ">>> Configuration\n");
+    print(STDOUT "OS: $os_release\n");
+    print(STDOUT "USER: $username\n");
+    print(STDOUT "CONFIG: $config_file\n\n");
+    
+    VMConfig::parse_config();
+    while (my ($key, $val) = each %VMConfig::virtual_machine) {
+        print(STDOUT "$key => $val\n");
+    }
+}
+
+sub configure {
+    if ($vm_name eq "") {
+        print(STDOUT "\nVM Name: ");
+        $vm_name = <STDIN>;
+        chomp $vm_name;
+    } else { print(STDOUT "name => $vm_name\n"); }
+    $hostname = $vm_name;
+    
+    ## Select Cloud image OS
+    ($vm_image_choice, %vm_image_urls) = IMGDownload::select_image($vm_image_choice);
+    
+    ## Create VM env
+    $vm_env = "$VMConfig::virtual_machine{vm_dir}/$vm_name";
+    my @vm_path = make_path("$vm_env", {
+        verbose => 0,
+        mode => 0777,
+    }) unless ( -d $vm_env );
+    
+    $uid = getpwnam("$VMConfig::username");
+    $gid = getgrnam("libvirt");
+    chown($uid, $gid, $vm_env);
+}
+
+sub create_vm_disk {
+    $diskname = "$vm_name.qcow2";
+    print(STDOUT ">>> Enter Disk Size ( in GBs ): ");
+    if ($disksize eq "") {
+        $disksize = <STDIN>;
+        chomp $disksize;
+    } else { print(STDOUT "$disksize"."G\n"); }
+    $disksize = $disksize."G";
+    
+    open QEMU, "qemu-img create -b os_img.qcow2 -f qcow2 -F qcow2 \"$diskname\" $disksize |" or die "$!";
+    while (my $line= <QEMU>) {
+        print(STDOUT "$line");
+    }
+    close QEMU;
+    print(STDOUT ">>> Image file created successfully.\n\n");
+    print(STDOUT ">>> Updating permissions.\n");
+    chown($uid, $gid, $diskname);
+}
+
+sub create_virtual_machine {
+    my $vm_os;
+    if ($vm_image_choice == 1) {
+        $vm_os = "ubuntu24.04";
+    } elsif ($vm_image_choice == 2) {
+        $vm_os = "debian13";
+    } else {
+        $vm_os = "opensuse16.0";
+    }
+    
+    print(STDOUT "\n>>> Installing virtual machine.\n");
+    my $virt_str = "$dosu virt-install --name $vm_name"
+    . " --ram=$VMConfig::virtual_machine{ram}"
+    . " --vcpus=$VMConfig::virtual_machine{cpu}"
+    . " --disk path=$diskname,format=qcow2"
+    . " --disk path=cidata.iso,device=cdrom"
+    . " --os-variant=$vm_os"
+    . " --network network=$VMConfig::virtual_machine{net},model=$VMConfig::virtual_machine{model}"
+    . " --graphics $VMConfig::virtual_machine{graphics}"
+    . " --noautoconsole --import |";
+    
+    open VIRT, $virt_str or die "$!";
+    while (my $line= <VIRT>) {
+        print(STDOUT "$line");
+    }
+    close VIRT;
+}
+
+sub get_ip_address {
+    print(STDOUT "\n>>> Waiting for network...\n\n");
+    my $found = 0;
+    while (!$found) {
+        sleep 5;
+        open IP, "$dosu virsh domifaddr $vm_name |" or die "$!";
+        while (my $line = <IP>) {
+            if ($line =~ m/ipv4/) {
+                print(STDOUT " Name     MAC address         Protocol   Address\n");
+                print(STDOUT "-------------------------------------------------------------\n");
+                print(STDOUT "$line\n");
+                $found = 1;
+            }
+        }
+
+        close IP;
+    }
+
+    print(STDOUT ">>> Done!\n");
+}
+
+sub main {
+    prepare();      # Parse Config
+    configure();    # Setup environment
+
+    ## Get Cloud image
+    chdir($vm_env);
+    IMGDownload::get_disk_image($vm_image_urls{$vm_image_choice});
+    create_vm_disk();
+    
+    ## Cloud Init Config
+    $ssh_key = CloudInit::get_pubkey();
+    CloudInit::configure($username,$hostname,$ssh_key);
+    CloudInit::create_cidata();
+
+    ## Create VM
+    $dosu = VMConfig::get_sudo();
+    create_virtual_machine();
+    get_ip_address();
+    return 1;
+}
+
+GetOptions(
+    "name=s" => \$vm_name,
+    "username=s" => \$username,
+    "hostname=s" => \$hostname,
+    "sshkey=s" => \$ssh_key,
+    "os=s" => \$vm_image_choice,
+    "size=s" => \$disksize,
+    "create" => \$create,
+);
+
+if ($create) {
+    main();
+}
