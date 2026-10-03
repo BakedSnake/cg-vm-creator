@@ -98,12 +98,16 @@ sub create_virtual_machine {
         $vm_os = "ubuntu24.04";
     } elsif ($vm_image_choice == 2) {
         $vm_os = "debian13";
-    } else {
+    } elsif ($vm_image_choice == 3) {
         $vm_os = "opensuse16.0";
+    } else {
+        $vm_os = "gentoo";
     }
     
     print(STDOUT "\n>>> Installing virtual machine.\n");
     my $virt_str = "$dosu virt-install --name $vm_name"
+    . " --arch $VMConfig::virtual_machine{arch}"
+    . " --boot $VMConfig::virtual_machine{boot}"
     . " --ram=$VMConfig::virtual_machine{ram}"
     . " --vcpus=$VMConfig::virtual_machine{cpu}"
     . " --disk path=$diskname,format=qcow2"
@@ -169,6 +173,8 @@ GetOptions(
     "sshkey=s" => \$ssh_key,
     "os=s" => \$vm_image_choice,
     "size=s" => \$disksize,
+    "boot=s" => \$VMConfig::virtual_machine{boot},
+    "arch=s" => \$VMConfig::virtual_machine{arch},
     "interactive=s" => \$interactive,
     "create" => \$create,
     "delete" => \$delete,
