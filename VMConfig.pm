@@ -15,7 +15,9 @@ our %virtual_machine = (
     cpu => "2",
     net => "default",
     model => "virtio",
-    graphics => "spice"
+    graphics => "spice",
+    boot => "uefi",
+    arch => "amd64"
 );
 
 sub get_os_release {
