@@ -146,8 +146,7 @@ sub get_ip_address {
 }
 
 sub main {
-    prepare();      # Parse Config
-    configure();    # Setup environment
+    configure();
 
     ## Get Cloud image
     chdir($vm_env);
@@ -166,18 +165,25 @@ sub main {
     return 1;
 }
 
+prepare();
 GetOptions(
-    "name=s" => \$vm_name,
-    "username=s" => \$username,
-    "hostname=s" => \$hostname,
-    "sshkey=s" => \$ssh_key,
-    "os=s" => \$vm_image_choice,
-    "size=s" => \$disksize,
-    "boot=s" => \$VMConfig::virtual_machine{boot},
-    "arch=s" => \$VMConfig::virtual_machine{arch},
+    "arch=s"        => \$VMConfig::virtual_machine{arch},
+    "boot=s"        => \$VMConfig::virtual_machine{boot},
+    "cpu=s"         => \$VMConfig::virtual_machine{cpu},
+    "graphics=s"    => \$VMConfig::virtual_machine{graphics},
+    "hostname=s"    => \$hostname,
+    "model=s"       => \$VMConfig::virtual_machine{model},
+    "name=s"        => \$vm_name,
+    "net=s"         => \$VMConfig::virtual_machine{net},
+    "os=s"          => \$vm_image_choice,
+    "ram=s"         => \$VMConfig::virtual_machine{ram},
+    "size=s"        => \$disksize,
+    "sshkey=s"      => \$VMConfig::virtual_machine{ssh_key},
+    "username=s"    => \$VMConfig::virtual_machine{user},
+
+    "create"        => \$create,
+    "delete"        => \$delete,
     "interactive=s" => \$interactive,
-    "create" => \$create,
-    "delete" => \$delete,
 );
 
 if ($create) {
