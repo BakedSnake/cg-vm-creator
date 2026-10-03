@@ -106,8 +106,8 @@ sub create_virtual_machine {
     
     print(STDOUT "\n>>> Installing virtual machine.\n");
     my $virt_str = "$dosu virt-install --name $vm_name"
-    . " --arch $VMConfig::virtual_machine{arch}"
-    . " --boot $VMConfig::virtual_machine{boot}"
+    . " --arch=$VMConfig::virtual_machine{arch}"
+    . " --boot=$VMConfig::virtual_machine{boot}"
     . " --ram=$VMConfig::virtual_machine{ram}"
     . " --vcpus=$VMConfig::virtual_machine{cpu}"
     . " --disk path=$diskname,format=qcow2"
